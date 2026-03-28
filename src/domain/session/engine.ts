@@ -145,10 +145,15 @@ export class SessionEngine {
   finishSession(
     sessionId: string
   ): { summary: SessionSummary; session: ExerciseSession } {
-    const session = this.requireActiveSession(sessionId);
+    const session = this.sessions.get(sessionId);
+    if (!session) throw new Error(`Session not found: ${sessionId}`);
 
     if (session.status === "completed") {
       return { summary: session.summary!, session };
+    }
+
+    if (sessionId !== this.activeSessionId || session.status !== "active") {
+      throw new Error(`Session ${sessionId} is not the active session`);
     }
 
     this.buildSummaryInPlace(session);

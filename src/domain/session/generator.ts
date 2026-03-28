@@ -2,6 +2,7 @@ import type {
   ExerciseConfig,
   ExerciseType,
   GeneratedQuestion,
+  PlaybackPlan,
 } from "../../types/index.js";
 import { getMajorScaleNotes } from "../theory/scales.js";
 import { getThirdAbove, getThirdBelow } from "../theory/degrees.js";
@@ -53,6 +54,22 @@ function resolveDirection(
   return direction;
 }
 
+function buildPlaybackPlan(
+  key: NoteName,
+  melody: NoteName[],
+  config: ExerciseConfig
+): PlaybackPlan {
+  const beatMs = Math.round(60000 / Math.max(40, config.tempoBpm));
+  const notes = [
+    ...(config.playTonicBeforeQuestion
+      ? [{ note: key, durationMs: beatMs }]
+      : []),
+    ...melody.map((note) => ({ note, durationMs: beatMs })),
+  ];
+
+  return { notes };
+}
+
 /** Generates a single question for the given exercise type and config. */
 function generateQuestion(
   exerciseType: ExerciseType,
@@ -89,6 +106,7 @@ function generateQuestion(
       melody: [melodyNote],
       expectedHarmony: [harmonyNote],
       choices,
+      playbackPlan: buildPlaybackPlan(key, [melodyNote], config),
     };
   }
 
@@ -121,6 +139,7 @@ function generateQuestion(
     direction,
     melody,
     expectedHarmony: harmony,
+    playbackPlan: buildPlaybackPlan(key, melody, config),
   };
 }
 

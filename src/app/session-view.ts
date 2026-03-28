@@ -8,6 +8,12 @@ import type { NoteName } from "../domain/theory/notes.js";
 type SubmitAnswerFn = (note: NoteName) => void;
 type FinishFn = () => void;
 type BackToCatalogFn = () => void;
+type ReplayFn = () => void;
+
+export interface SessionAudioState {
+  errorMessage: string | null;
+  isPlaying: boolean;
+}
 
 function formatTime(ms: number): string {
   const seconds = Math.floor(ms / 1000);
@@ -78,7 +84,8 @@ export function renderSessionView(
   session: ExerciseSession,
   onFinish: FinishFn,
   onBack: BackToCatalogFn,
-  lastEvaluation: AnswerEvaluation | null
+  lastEvaluation: AnswerEvaluation | null,
+  audioState: SessionAudioState
 ): HTMLElement {
   const container = document.createElement("div");
   container.className = "min-h-screen bg-gray-50";
@@ -94,6 +101,8 @@ export function renderSessionView(
   const progressLabel = isEndless ? "Endless" : `${progress}%`;
   const totalLabel = isEndless ? "Infinity" : String(totalQuestions);
   const isVoice = session.config.inputType === "voice";
+  const canReplay =
+    session.config.allowReplay && (question.playbackPlan?.notes.length ?? 0) > 0;
 
   container.innerHTML = `
     <header class="bg-white border-b border-gray-200 shadow-sm">
@@ -145,6 +154,40 @@ export function renderSessionView(
               : "Sing or select the correct harmony note."
           }
         </p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="text-left">
+            <p class="text-sm font-medium text-gray-700">Audio prompt</p>
+            <p class="text-sm text-gray-500">
+              ${
+                audioState.isPlaying
+                  ? "Playing the current prompt..."
+                  : session.config.playbackMode === "auto"
+                    ? "Prompt plays automatically when a new question appears."
+                    : "Use the button to play the current prompt."
+              }
+            </p>
+          </div>
+          ${
+            canReplay
+              ? `<button
+                  id="replay-btn"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  ${audioState.isPlaying ? "disabled" : ""}
+                >
+                  ${audioState.isPlaying ? "Playing..." : "Replay Prompt"}
+                </button>`
+              : ""
+          }
+        </div>
+        ${
+          audioState.errorMessage
+            ? `<p class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">${audioState.errorMessage}</p>`
+            : ""
+        }
       </div>
 
       ${
@@ -235,4 +278,14 @@ export function attachChoiceHandlers(
       if (note) onSubmitAnswer(note);
     });
   });
+}
+
+export function attachReplayHandler(
+  container: HTMLElement,
+  onReplay: ReplayFn
+): void {
+  const button = container.querySelector<HTMLButtonElement>("#replay-btn");
+  if (!button) return;
+
+  button.addEventListener("click", onReplay);
 }

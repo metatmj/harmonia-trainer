@@ -16,7 +16,7 @@ const baseConfig: ExerciseConfig = {
   inputType: "multiple-choice",
 };
 
-describe("generateQuestions – match-third", () => {
+describe("generateQuestions - match-third", () => {
   it("generates the requested number of questions", () => {
     const qs = generateQuestions("match-third", { ...baseConfig, questionCount: 7 });
     expect(qs).toHaveLength(7);
@@ -69,9 +69,29 @@ describe("generateQuestions – match-third", () => {
       expect(["above", "below"]).toContain(q.direction);
     }
   });
+
+  it("includes a playback plan with the melody note by default", () => {
+    const [question] = generateQuestions("match-third", baseConfig);
+    expect(question.playbackPlan?.notes).toEqual([
+      {
+        note: question.melody[0],
+        durationMs: Math.round(60000 / baseConfig.tempoBpm),
+      },
+    ]);
+  });
+
+  it("prepends the tonic to the playback plan when enabled", () => {
+    const [question] = generateQuestions("match-third", {
+      ...baseConfig,
+      playTonicBeforeQuestion: true,
+    });
+
+    expect(question.playbackPlan?.notes[0]?.note).toBe(question.key);
+    expect(question.playbackPlan?.notes[1]?.note).toBe(question.melody[0]);
+  });
 });
 
-describe("generateQuestions – sing-third", () => {
+describe("generateQuestions - sing-third", () => {
   const singConfig: ExerciseConfig = {
     ...baseConfig,
     inputType: "voice",
@@ -93,7 +113,7 @@ describe("generateQuestions – sing-third", () => {
   });
 });
 
-describe("generateQuestions – phrase-harmony", () => {
+describe("generateQuestions - phrase-harmony", () => {
   const phraseConfig: ExerciseConfig = {
     ...baseConfig,
     inputType: "voice",
@@ -101,7 +121,7 @@ describe("generateQuestions – phrase-harmony", () => {
     questionCount: 3,
   };
 
-  it("melody length is clamped to 3–5 notes", () => {
+  it("melody length is clamped to 3-5 notes", () => {
     const qs = generateQuestions("phrase-harmony", phraseConfig);
     for (const q of qs) {
       expect(q.melody.length).toBeGreaterThanOrEqual(3);
@@ -114,5 +134,12 @@ describe("generateQuestions – phrase-harmony", () => {
     for (const q of qs) {
       expect(q.expectedHarmony).toHaveLength(q.melody.length);
     }
+  });
+
+  it("includes the full melody phrase in the playback plan", () => {
+    const [question] = generateQuestions("phrase-harmony", phraseConfig);
+    expect(question.playbackPlan?.notes.map((note) => note.note)).toEqual(
+      question.melody
+    );
   });
 });
