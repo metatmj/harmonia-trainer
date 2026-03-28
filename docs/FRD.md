@@ -12,6 +12,15 @@ The system shall support three primary training areas:
 ## 2.3 User Journey and Workflow
 Home page -> select an exercise -> configure settings or choose a preset -> start a training session -> receive per-question feedback -> review session summary.
 
+## 2.3.1 Iteration Assumptions and Resolved Decisions
+The following decisions are fixed for this implementation round so the team can proceed without additional product clarification:
+- The system shall support a browser-first experience and does not require authentication.
+- A session may be implemented entirely on the client for the MVP, as long as the API contract and module boundaries remain clear enough to support a future backend.
+- If microphone permission is denied, microphone-based exercises shall not start and the user shall receive a clear actionable message.
+- Endless mode shall be ended explicitly by the user through a finish action rather than by an automatic question limit.
+- Replay actions shall not count as answer attempts and shall not affect scoring.
+- The primary target platform for this round is modern desktop browsers; mobile support is desirable but not required for acceptance.
+
 ## 2.4 Functional Modules
 ### 2.4.1 Lesson Module
 The system shall provide a lesson page that explains:
@@ -116,3 +125,22 @@ Functional requirements:
 - The summary shall show total session time.
 - The summary should support breakdowns by key.
 - The summary should support breakdowns by harmony direction.
+
+## 2.5 Cross-Module Interaction Rules
+The following rules apply across the system and are part of the accepted behavior for this round:
+- The user shall work on one active session at a time in the interface.
+- The user shall be able to leave and return to an in-progress session during normal browser use without easily losing progress.
+- The system shall clearly distinguish informational playback actions from answer submission actions.
+- For note-selection exercises, the system shall keep the current question active until the correct choice is submitted.
+- For microphone-based exercises, the system shall allow repeated attempts until the answer is accepted according to the evaluation rules.
+- If audio playback, microphone access, or pitch detection is unavailable, the system shall present a clear error state rather than fail silently.
+- The summary shall use first-attempt correctness as the primary accuracy metric even when the user needed multiple tries to complete a question.
+
+## 2.6 Acceptance Criteria for This Iteration
+- Lesson content can be opened and includes an explanation of third above and third below with at least one simple note relationship example.
+- The exercise catalog lists all in-scope exercises with title, short description, and expected input type.
+- The settings flow supports direction, allowed keys, question count, and the other applicable options defined in this document.
+- Match the Third can be completed end-to-end with playback, retry-until-correct behavior, and first-attempt scoring.
+- Sing the Third can be completed end-to-end with microphone permission handling and pitch-based feedback categories.
+- Phrase Harmony can be completed end-to-end using short phrases in the initial difficulty range.
+- Session completion always produces a summary containing total questions, first-attempt correct count, accuracy, total attempts, and total session time.

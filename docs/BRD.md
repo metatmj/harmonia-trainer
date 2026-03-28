@@ -50,6 +50,23 @@ Out of scope for the initial release:
 - Minor keys, modulation, and advanced harmonic contexts.
 - Multi-part harmony arrangements such as full SATB training.
 
+## 1.7.1 Iteration Delivery Boundary
+For this implementation round, the following scope decisions are fixed:
+- The iteration shall deliver a usable MVP covering lesson content, exercise catalog, configurable session start, per-question feedback, and end-of-session summary.
+- The iteration shall support the three exercise types already defined in scope: Match the Third, Sing the Third, and Phrase Harmony.
+- The iteration shall focus on major-key training for third above and third below only.
+- The iteration may use local in-browser storage for session continuity and does not require user accounts.
+- The iteration does not require cloud sync, multi-device progress sharing, or teacher-facing management features.
+- Any implementation detail not explicitly specified in later documents shall be chosen in favor of the simplest approach that preserves extensibility and beginner usability.
+
+## 1.7.2 Must-Have Outcomes for This Round
+The round shall be considered complete only when all of the following are true:
+- A new user can open the app, understand the available exercises, and start a session without external instruction.
+- The user can complete at least one full session in each in-scope exercise type.
+- The system provides immediate correctness feedback for note-selection and vocal exercises.
+- The system records first-attempt correctness and can present a summary at the end of the session.
+- The product remains fully browser-based for this round.
+
 ## 1.8 Success Metrics
 The initial product release will be considered successful if:
 - New users can begin practicing without extensive explanation.

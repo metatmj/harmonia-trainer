@@ -101,6 +101,13 @@ Suggested fields:
 - endedAt
 - summary
 
+### 3.4.7 Required MVP Persistence Semantics
+For this implementation round:
+- The system shall maintain one active session at a time in the client experience.
+- Session state may be stored in memory and may additionally be mirrored to browser storage to reduce accidental progress loss.
+- Persistent user accounts and remote progress sync are not required.
+- Data structures shall remain serializable so they can later be persisted to a backend without redesign.
+
 ## 3.5 API Requirements
 ### 3.5.1 GET /api/exercises
 The system shall return the exercise catalog.
@@ -119,6 +126,14 @@ The system shall accept a user answer and return an evaluation result.
 
 ### 3.5.6 POST /api/sessions/:sessionId/finish
 The system shall finalize the session and return a summary.
+
+### 3.5.7 API Contract Clarifications for This Iteration
+- The API contract defines the module boundary even if the MVP is implemented client-side.
+- All responses shall use JSON.
+- Validation errors shall return a structured error payload containing at least an error code and message.
+- Session identifiers shall be stable for the lifetime of the session.
+- The answer submission response shall include both the evaluation result and the updated session progress needed by the UI.
+- The finish response shall include the final session summary and the final session status.
 
 ## 3.6 Question Generation Rules
 ### 3.6.1 General Rules
@@ -156,6 +171,13 @@ The system shall finalize the session and return a summary.
 - The initial version should limit large melodic leaps.
 - The initial version should use simple, consistent rhythm values.
 
+### 3.6.6 Clarified MVP Generation Constraints
+- Mixed mode shall choose between third above and third below on a per-question basis.
+- Single-note exercises shall generate melodies of length 1.
+- Phrase Harmony in the initial version shall generate phrases of 3 to 5 notes.
+- Generated choices for multiple-choice exercises shall contain 3 or 4 options.
+- Replay shall reproduce the same underlying question rather than regenerate a new one.
+
 ## 3.7 Answer Evaluation Rules
 ### 3.7.1 Multiple-Choice Evaluation
 - If the selected choice matches the correct option, the answer shall be marked correct.
@@ -178,10 +200,28 @@ Suggested tolerance:
 - Near: +/- 31 to 70 cents
 - Wrong: beyond +/- 70 cents
 
+### 3.7.4 Clarified Voice Evaluation Semantics
+- The accepted tolerance values above shall be the default for this round.
+- The system shall treat low-confidence pitch input as no-input rather than as a wrong note.
+- The same-as-melody judgement shall take precedence over near-high, near-low, and wrong when the melody note is confidently detected instead of the target harmony.
+- A question shall be considered completed only when the evaluation result is correct.
+
 ## 3.8 Scoring Rules
 - Accuracy shall be calculated using first-attempt results only.
 - The user shall not advance to the next question until the current question is answered correctly.
 - If the user answers incorrectly first and correctly on a later attempt, the question shall be considered completed but not counted as first-attempt correct.
+
+### 3.8.1 Attempt and Replay Clarifications
+- An attempt shall be counted only when the user submits an answer or when the system evaluates a vocal attempt.
+- Replay actions, instructional playback, and passive listening shall not count as attempts.
+- Each question shall track whether the first counted attempt was correct.
+- Endless mode sessions shall report summary metrics based on the questions completed before the user finishes the session.
+
+## 3.8.2 Session State Clarifications
+- A session shall support the states draft, active, completed, and abandoned.
+- A newly created session shall become active when the first question is ready for interaction.
+- A session shall become completed only through the finish flow or by exhausting a non-zero question count.
+- A session may be marked abandoned if the implementation detects that an in-progress session can no longer be resumed reliably.
 
 ## 3.9 Non-Functional Requirements
 ### 3.9.1 Usability
@@ -207,6 +247,11 @@ Suggested tolerance:
 - Music theory logic shall be separated from user interface code.
 - Question generation, evaluation, and scoring should be modular.
 - The data model should support future exercise expansion.
+
+### 3.9.6 Delivery Constraints for This Iteration
+- The implementation shall prioritize determinism and clarity over advanced realism in generated audio or pitch analysis.
+- The implementation shall prefer simple, testable module boundaries for theory, generation, session, evaluation, and presentation logic.
+- The MVP shall avoid introducing backend or infrastructure complexity unless required to satisfy the documented scope.
 
 ## 3.10 Future Enhancements
 Possible future enhancements include:
