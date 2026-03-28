@@ -4,6 +4,7 @@ import type {
   GeneratedQuestion,
   PlaybackPlan,
 } from "../../types/index.js";
+import { noteToMidi } from "../theory/midi.js";
 import { getMajorScaleNotes } from "../theory/scales.js";
 import { getThirdAbove, getThirdBelow } from "../theory/degrees.js";
 import type { NoteName } from "../theory/notes.js";
@@ -107,6 +108,10 @@ function generateQuestion(
       expectedHarmony: [harmonyNote],
       choices,
       playbackPlan: buildPlaybackPlan(key, [melodyNote], config),
+      metadata: {
+        melodyMidis: [noteToMidi(melodyNote, 4)],
+        expectedHarmonyMidis: [noteToMidi(harmonyNote, 4)],
+      },
     };
   }
 
@@ -140,6 +145,10 @@ function generateQuestion(
     melody,
     expectedHarmony: harmony,
     playbackPlan: buildPlaybackPlan(key, melody, config),
+    metadata: {
+      melodyMidis: melody.map((note) => noteToMidi(note, 4)),
+      expectedHarmonyMidis: harmony.map((note) => noteToMidi(note, 4)),
+    },
   };
 }
 

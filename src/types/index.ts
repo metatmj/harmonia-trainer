@@ -92,6 +92,7 @@ export type UserAnswer =
       detectedNote?: NoteName;
       detectedMidis?: number[];
       detectedNotes?: NoteName[];
+      detectedFrequency?: number;
       confidence: number;
     };
 

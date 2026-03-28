@@ -4,6 +4,14 @@ import type {
   UserAnswer,
 } from "../../types/index.js";
 
+const CORRECT_CENTS_TOLERANCE = 30;
+const NEAR_CENTS_TOLERANCE = 70;
+
+function centsDifference(actualFrequency: number, targetMidi: number): number {
+  const targetFrequency = 440 * 2 ** ((targetMidi - 69) / 12);
+  return 1200 * Math.log2(actualFrequency / targetFrequency);
+}
+
 /**
  * Evaluates a submitted answer against the expected answer for a question.
  *
@@ -105,6 +113,13 @@ export function evaluateAnswer(
     }
 
     const detectedNote = answer.detectedNote;
+    const detectedFrequency = answer.detectedFrequency;
+    const expectedHarmonyMidis = question.metadata?.["expectedHarmonyMidis"];
+    const targetMidi =
+      Array.isArray(expectedHarmonyMidis) &&
+      typeof expectedHarmonyMidis[0] === "number"
+        ? expectedHarmonyMidis[0]
+        : null;
 
     // Same-as-melody judgement takes precedence (SRS 3.7.4)
     if (question.melody.length > 0 && detectedNote === question.melody[0]) {
@@ -118,6 +133,45 @@ export function evaluateAnswer(
         feedbackMessage:
           "That sounds like the melody note. Aim for the harmony note.",
       };
+    }
+
+    if (detectedFrequency && targetMidi !== null) {
+      const centsOff = centsDifference(detectedFrequency, targetMidi);
+      if (Math.abs(centsOff) <= CORRECT_CENTS_TOLERANCE) {
+        return {
+          isCorrect: true,
+          countedForScore: isFirstAttempt,
+          expected,
+          actual: detectedNote,
+          pitchJudgement: "correct",
+          feedbackCode: "correct",
+          feedbackMessage: "Correct!",
+        };
+      }
+
+      if (centsOff > CORRECT_CENTS_TOLERANCE && centsOff <= NEAR_CENTS_TOLERANCE) {
+        return {
+          isCorrect: false,
+          countedForScore: isFirstAttempt,
+          expected,
+          actual: detectedNote,
+          pitchJudgement: "near-high",
+          feedbackCode: "near-high",
+          feedbackMessage: "Close, but a little high. Try again.",
+        };
+      }
+
+      if (centsOff < -CORRECT_CENTS_TOLERANCE && centsOff >= -NEAR_CENTS_TOLERANCE) {
+        return {
+          isCorrect: false,
+          countedForScore: isFirstAttempt,
+          expected,
+          actual: detectedNote,
+          pitchJudgement: "near-low",
+          feedbackCode: "near-low",
+          feedbackMessage: "Close, but a little low. Try again.",
+        };
+      }
     }
 
     const isCorrect = detectedNote === expected[0];

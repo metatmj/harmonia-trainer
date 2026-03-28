@@ -46,6 +46,7 @@ export function initApp(root: HTMLElement): void {
     errorMessage: null,
     detectedNote: null,
     detectedMidi: null,
+    detectedFrequency: null,
     confidence: 0,
     capturedNotes: [],
     capturedMidis: [],
@@ -64,6 +65,7 @@ export function initApp(root: HTMLElement): void {
         errorMessage: null,
         detectedNote: null,
         detectedMidi: null,
+        detectedFrequency: null,
         confidence: 0,
         capturedNotes: [],
         capturedMidis: [],
@@ -99,6 +101,7 @@ export function initApp(root: HTMLElement): void {
       errorMessage: null,
       detectedNote: null,
       detectedMidi: null,
+      detectedFrequency: null,
       confidence: 0,
       capturedNotes: [],
       capturedMidis: [],
@@ -144,6 +147,7 @@ export function initApp(root: HTMLElement): void {
       errorMessage: null,
       detectedNote: null,
       detectedMidi: null,
+      detectedFrequency: null,
       confidence: 0,
       capturedNotes: [],
       capturedMidis: [],
@@ -177,6 +181,7 @@ export function initApp(root: HTMLElement): void {
             isRequestingPermission: false,
             detectedNote: detection?.note ?? null,
             detectedMidi: detection?.midi ?? null,
+            detectedFrequency: detection?.frequency ?? null,
             confidence: detection?.confidence ?? 0,
           };
           render();
@@ -204,6 +209,7 @@ export function initApp(root: HTMLElement): void {
       isRequestingPermission: false,
       detectedNote: null,
       detectedMidi: null,
+      detectedFrequency: null,
       confidence: 0,
     };
     render();
@@ -237,6 +243,7 @@ export function initApp(root: HTMLElement): void {
             errorMessage: null,
             detectedNote: null,
             detectedMidi: null,
+            detectedFrequency: null,
             confidence: 0,
             capturedNotes: [],
             capturedMidis: [],
@@ -296,6 +303,7 @@ export function initApp(root: HTMLElement): void {
       const handleVoiceSubmit = () => {
         const detectedNote = sessionVoiceState.detectedNote;
         const detectedMidi = sessionVoiceState.detectedMidi;
+        const detectedFrequency = sessionVoiceState.detectedFrequency;
         const confidence = sessionVoiceState.confidence;
         const detectedNotes = sessionVoiceState.capturedNotes;
         const detectedMidis = sessionVoiceState.capturedMidis;
@@ -313,6 +321,7 @@ export function initApp(root: HTMLElement): void {
           detectedNote: detectedNote ?? undefined,
           detectedMidis,
           detectedNotes,
+          detectedFrequency: detectedFrequency ?? undefined,
           confidence,
         });
         persistSessionState();

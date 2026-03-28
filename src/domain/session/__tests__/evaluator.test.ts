@@ -10,6 +10,10 @@ const baseQuestion: GeneratedQuestion = {
   melody: ["C"],
   expectedHarmony: ["E"],
   choices: ["E", "D", "F", "G"],
+  metadata: {
+    melodyMidis: [60],
+    expectedHarmonyMidis: [64],
+  },
 };
 
 describe("evaluateAnswer - multiple-choice", () => {
@@ -122,11 +126,48 @@ describe("evaluateAnswer - voice", () => {
   it("marks correct when detected note matches expected harmony", () => {
     const result = evaluateAnswer(
       singQuestion,
-      { type: "voice", confidence: 0.9, detectedNote: "E" },
+      {
+        type: "voice",
+        confidence: 0.9,
+        detectedNote: "E",
+        detectedFrequency: 329.63,
+      },
       true
     );
     expect(result.isCorrect).toBe(true);
     expect(result.feedbackCode).toBe("correct");
+  });
+
+  it("returns near-high when the detected pitch is slightly above target", () => {
+    const result = evaluateAnswer(
+      singQuestion,
+      {
+        type: "voice",
+        confidence: 0.9,
+        detectedNote: "F",
+        detectedFrequency: 337.35,
+      },
+      true
+    );
+
+    expect(result.isCorrect).toBe(false);
+    expect(result.feedbackCode).toBe("near-high");
+  });
+
+  it("returns near-low when the detected pitch is slightly below target", () => {
+    const result = evaluateAnswer(
+      singQuestion,
+      {
+        type: "voice",
+        confidence: 0.9,
+        detectedNote: "D#",
+        detectedFrequency: 322.1,
+      },
+      true
+    );
+
+    expect(result.isCorrect).toBe(false);
+    expect(result.feedbackCode).toBe("near-low");
   });
 
   it("marks wrong when detected note does not match harmony or melody", () => {

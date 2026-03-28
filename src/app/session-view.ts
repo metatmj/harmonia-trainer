@@ -23,6 +23,7 @@ export interface SessionVoiceState {
   errorMessage: string | null;
   detectedNote: NoteName | null;
   detectedMidi: number | null;
+  detectedFrequency: number | null;
   confidence: number;
   capturedNotes: NoteName[];
   capturedMidis: number[];
