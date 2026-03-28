@@ -331,7 +331,11 @@ function renderVoicePanel(
           ${
             voiceState.detectedMidi === null
               ? "No stable pitch yet."
-              : `MIDI ${voiceState.detectedMidi}`
+              : `MIDI ${voiceState.detectedMidi}${
+                  voiceState.detectedFrequency === null
+                    ? ""
+                    : ` • ${voiceState.detectedFrequency.toFixed(1)} Hz`
+                }`
           }
         </p>
       </div>
@@ -356,7 +360,9 @@ function renderVoicePanel(
                   type="button"
                   class="flex-1 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
                   ${
-                    voiceState.detectedNote === null || voiceState.isRequestingPermission
+                    voiceState.detectedNote === null ||
+                    voiceState.isRequestingPermission ||
+                    voiceState.capturedNotes.length >= targetLength
                       ? "disabled"
                       : ""
                   }

@@ -387,6 +387,9 @@ export function initApp(root: HTMLElement): void {
         handleVoiceSubmit,
         () => {
           if (sessionVoiceState.detectedNote === null) return;
+          if (sessionVoiceState.capturedNotes.length >= currentQuestion.expectedHarmony.length) {
+            return;
+          }
 
           sessionVoiceState = {
             ...sessionVoiceState,
