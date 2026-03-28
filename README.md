@@ -21,3 +21,7 @@ src/
   lib/
   types/
 ```
+
+## Documentation
+
+- Project requirement documents: see `docs/README.md` for BRD, FRD, and SRS.
