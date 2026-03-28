@@ -118,8 +118,11 @@ export function renderSessionView(
   const progressLabel = isEndless ? "Endless" : `${progress}%`;
   const totalLabel = isEndless ? "Infinity" : String(totalQuestions);
   const isVoice = session.config.inputType === "voice";
-  const canReplay =
-    session.config.allowReplay && (question.playbackPlan?.notes.length ?? 0) > 0;
+  const canTriggerPlayback =
+    (question.playbackPlan?.notes.length ?? 0) > 0 &&
+    (session.config.playbackMode === "manual" || session.config.allowReplay);
+  const playbackButtonLabel =
+    session.config.playbackMode === "manual" ? "Play Prompt" : "Replay Prompt";
 
   container.innerHTML = `
     <header class="bg-white border-b border-gray-200 shadow-sm">
@@ -192,14 +195,14 @@ export function renderSessionView(
             </p>
           </div>
           ${
-            canReplay
+            canTriggerPlayback
               ? `<button
                   id="replay-btn"
                   type="button"
                   class="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
                   ${audioState.isPlaying ? "disabled" : ""}
                 >
-                  ${audioState.isPlaying ? "Playing..." : "Replay Prompt"}
+                  ${audioState.isPlaying ? "Playing..." : playbackButtonLabel}
                 </button>`
               : ""
           }

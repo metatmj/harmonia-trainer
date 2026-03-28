@@ -10,6 +10,11 @@ const DIRECTION_OPTIONS = [
   { value: "mixed", label: "Mixed (random per question)" },
 ] as const;
 
+const PLAYBACK_MODE_OPTIONS = [
+  { value: "auto", label: "Auto-play prompt" },
+  { value: "manual", label: "Play prompt manually" },
+] as const;
+
 function buildKeyCheckboxes(selectedKeys: readonly NoteName[]): string {
   return SUPPORTED_KEYS.map(
     (key) => `
@@ -175,6 +180,26 @@ export function renderSessionConfigView(
           />
         </div>
 
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Prompt Playback</label>
+          <div class="flex flex-col gap-2">
+            ${PLAYBACK_MODE_OPTIONS.map(
+              (option) => `
+                <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="playback-mode"
+                    value="${option.value}"
+                    class="accent-indigo-600"
+                    ${defaults.playbackMode === option.value ? "checked" : ""}
+                  />
+                  ${option.label}
+                </label>
+              `
+            ).join("")}
+          </div>
+        </div>
+
         <div class="mb-8 flex flex-col gap-3">
           <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input
@@ -288,12 +313,17 @@ function readConfigFromForm(
   const allowReplay =
     container.querySelector<HTMLInputElement>("#allow-replay")?.checked ?? true;
 
+  const playbackMode = (
+    container.querySelector<HTMLInputElement>('input[name="playback-mode"]:checked')
+      ?.value ?? exercise.defaultConfig.playbackMode
+  ) as ExerciseConfig["playbackMode"];
+
   return {
     direction,
     allowedKeys: checkedKeys,
     questionCount,
     melodyLength,
-    playbackMode: exercise.defaultConfig.playbackMode,
+    playbackMode,
     playTonicBeforeQuestion,
     allowReplay,
     tempoBpm,
@@ -329,6 +359,11 @@ function applyConfigToForm(
 
   const tempo = container.querySelector<HTMLInputElement>("#tempo");
   if (tempo) tempo.value = String(config.tempoBpm);
+
+  const playbackModeRadio = container.querySelector<HTMLInputElement>(
+    `input[name="playback-mode"][value="${config.playbackMode}"]`
+  );
+  if (playbackModeRadio) playbackModeRadio.checked = true;
 
   const playTonic = container.querySelector<HTMLInputElement>("#play-tonic");
   if (playTonic) playTonic.checked = config.playTonicBeforeQuestion;
