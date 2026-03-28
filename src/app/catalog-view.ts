@@ -36,16 +36,26 @@ function directionBadges(directions: string[]): string {
 
 export function renderCatalogView(
   exercises: ExerciseTemplate[],
-  onSelectExercise: (slug: string) => void
+  onSelectExercise: (slug: string) => void,
+  onOpenLesson: () => void
 ): HTMLElement {
   const container = document.createElement("div");
   container.className = "min-h-screen bg-gray-50";
 
   container.innerHTML = `
     <header class="bg-white border-b border-gray-200 shadow-sm">
-      <div class="max-w-4xl mx-auto px-6 py-5">
-        <h1 class="text-3xl font-bold text-indigo-600">Harmonia Trainer</h1>
-        <p class="text-gray-500 mt-1">Your harmony singing practice companion</p>
+      <div class="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold text-indigo-600">Harmonia Trainer</h1>
+          <p class="text-gray-500 mt-1">Your harmony singing practice companion</p>
+        </div>
+        <button
+          id="open-lesson-btn"
+          type="button"
+          class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100"
+        >
+          Open Lesson
+        </button>
       </div>
     </header>
 
@@ -86,6 +96,11 @@ export function renderCatalogView(
 
   container.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
+    if (target.closest("#open-lesson-btn")) {
+      onOpenLesson();
+      return;
+    }
+
     const button = target.closest<HTMLButtonElement>("button[data-slug]");
     if (button?.dataset["slug"]) {
       onSelectExercise(button.dataset["slug"]);

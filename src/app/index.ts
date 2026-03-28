@@ -9,6 +9,10 @@ import {
 import { promptAudioPlayer } from "../audio/prompt-player.js";
 import { microphonePitchDetector } from "../audio/pitch-detector.js";
 import { renderCatalogView } from "./catalog-view.js";
+import {
+  LESSON_PLAYBACK_PLANS,
+  renderLessonView,
+} from "./lesson-view.js";
 import { renderSessionConfigView } from "./session-config-view.js";
 import {
   renderSessionView,
@@ -22,6 +26,7 @@ import {
 
 type AppState =
   | { screen: "catalog" }
+  | { screen: "lesson" }
   | { screen: "config"; slug: string }
   | { screen: "session"; sessionId: string; lastEvaluation: AnswerEvaluation | null }
   | { screen: "summary"; sessionId: string };
@@ -219,8 +224,21 @@ export function initApp(root: HTMLElement): void {
     root.innerHTML = "";
 
     if (state.screen === "catalog") {
-      const view = renderCatalogView(EXERCISE_CATALOG, (slug) =>
-        navigate({ screen: "config", slug })
+      const view = renderCatalogView(
+        EXERCISE_CATALOG,
+        (slug) => navigate({ screen: "config", slug }),
+        () => navigate({ screen: "lesson" })
+      );
+      root.appendChild(view);
+      return;
+    }
+
+    if (state.screen === "lesson") {
+      const view = renderLessonView(
+        () => navigate({ screen: "catalog" }),
+        (exampleId) => {
+          void promptAudioPlayer.play(LESSON_PLAYBACK_PLANS[exampleId]);
+        }
       );
       root.appendChild(view);
       return;
