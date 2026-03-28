@@ -7,6 +7,11 @@ import {
   saveSessionEngineSnapshot,
 } from "../domain/session/persistence.js";
 import { promptAudioPlayer } from "../audio/prompt-player.js";
+import {
+  createPhraseCaptureState,
+  updatePhraseCaptureState,
+  type PhraseCaptureState,
+} from "../audio/phrase-capture.js";
 import { microphonePitchDetector } from "../audio/pitch-detector.js";
 import { renderCatalogView } from "./catalog-view.js";
 import {
@@ -58,6 +63,7 @@ export function initApp(root: HTMLElement): void {
   };
   let lastAutoPlayedQuestionId: string | null = null;
   let lastVoiceQuestionId: string | null = null;
+  let phraseCaptureState: PhraseCaptureState = createPhraseCaptureState();
 
   function navigate(next: AppState): void {
     if (next.screen !== "session") {
@@ -77,6 +83,7 @@ export function initApp(root: HTMLElement): void {
       };
       lastAutoPlayedQuestionId = null;
       lastVoiceQuestionId = null;
+      phraseCaptureState = createPhraseCaptureState();
     }
 
     state = next;
@@ -111,6 +118,7 @@ export function initApp(root: HTMLElement): void {
       capturedNotes: [],
       capturedMidis: [],
     };
+    phraseCaptureState = createPhraseCaptureState();
 
     if (source === "auto") {
       lastAutoPlayedQuestionId = question.id;
@@ -158,6 +166,7 @@ export function initApp(root: HTMLElement): void {
       capturedMidis: [],
     };
     lastVoiceQuestionId = questionId;
+    phraseCaptureState = createPhraseCaptureState();
   }
 
   async function startVoiceListening(sessionId: string): Promise<void> {
@@ -180,6 +189,23 @@ export function initApp(root: HTMLElement): void {
       await microphonePitchDetector.startListening(
         { preferFlatsForKey: question.key },
         (detection) => {
+          const isPhraseQuestion = question.melody.length > 1;
+          let nextCapturedNotes = sessionVoiceState.capturedNotes;
+          let nextCapturedMidis = sessionVoiceState.capturedMidis;
+
+          if (isPhraseQuestion) {
+            const captureResult = updatePhraseCaptureState(phraseCaptureState, detection);
+            phraseCaptureState = captureResult.nextState;
+
+            if (
+              captureResult.committed &&
+              nextCapturedNotes.length < question.expectedHarmony.length
+            ) {
+              nextCapturedNotes = [...nextCapturedNotes, captureResult.committed.note];
+              nextCapturedMidis = [...nextCapturedMidis, captureResult.committed.midi];
+            }
+          }
+
           sessionVoiceState = {
             ...sessionVoiceState,
             isListening: true,
@@ -188,6 +214,8 @@ export function initApp(root: HTMLElement): void {
             detectedMidi: detection?.midi ?? null,
             detectedFrequency: detection?.frequency ?? null,
             confidence: detection?.confidence ?? 0,
+            capturedNotes: nextCapturedNotes,
+            capturedMidis: nextCapturedMidis,
           };
           render();
         }
@@ -217,6 +245,7 @@ export function initApp(root: HTMLElement): void {
       detectedFrequency: null,
       confidence: 0,
     };
+    phraseCaptureState = createPhraseCaptureState();
     render();
   }
 
@@ -268,6 +297,7 @@ export function initApp(root: HTMLElement): void {
           };
           lastAutoPlayedQuestionId = null;
           lastVoiceQuestionId = null;
+          phraseCaptureState = createPhraseCaptureState();
           const session = sessionEngine.createSession(exercise.type, config);
           persistSessionState();
           navigate({ screen: "session", sessionId: session.id, lastEvaluation: null });
@@ -400,6 +430,10 @@ export function initApp(root: HTMLElement): void {
                 : [...sessionVoiceState.capturedMidis, sessionVoiceState.detectedMidi],
             errorMessage: null,
           };
+          phraseCaptureState = {
+            ...phraseCaptureState,
+            lastCommittedNote: sessionVoiceState.detectedNote,
+          };
           render();
         },
         () => {
@@ -408,6 +442,7 @@ export function initApp(root: HTMLElement): void {
             capturedNotes: [],
             capturedMidis: [],
           };
+          phraseCaptureState = createPhraseCaptureState();
           render();
         }
       );

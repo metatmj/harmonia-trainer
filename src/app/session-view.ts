@@ -88,8 +88,8 @@ export function renderSummaryView(
   `;
 
   container
-    .querySelector<HTMLButtonElement>("#back-to-catalog")!
-    .addEventListener("click", onBack);
+    .querySelector<HTMLButtonElement>("#back-to-catalog")
+    ?.addEventListener("click", onBack);
 
   return container;
 }
@@ -171,7 +171,7 @@ export function renderSessionView(
         <p class="text-gray-500 text-sm">
           ${
             isPhraseQuestion
-              ? "Sing and capture the harmony phrase in order."
+              ? "Sing the harmony phrase in order."
               : "Sing or select the correct harmony note."
           }
         </p>
@@ -243,12 +243,12 @@ export function renderSessionView(
   `;
 
   container
-    .querySelector<HTMLButtonElement>("#abandon-btn")!
-    .addEventListener("click", onBack);
+    .querySelector<HTMLButtonElement>("#abandon-btn")
+    ?.addEventListener("click", onBack);
 
   container
-    .querySelector<HTMLButtonElement>("#finish-btn")!
-    .addEventListener("click", onFinish);
+    .querySelector<HTMLButtonElement>("#finish-btn")
+    ?.addEventListener("click", onFinish);
 
   return container;
 }
@@ -311,7 +311,7 @@ function renderVoicePanel(
       : isPromptPlaying
         ? "Wait for the prompt to finish, then start listening."
         : isPhraseQuestion
-          ? "Capture the harmony line one note at a time, then submit the phrase."
+          ? "Sing the phrase continuously. Stable notes auto-capture while you listen."
           : "Start listening, sing the harmony note, then submit the detected note.";
 
   return `
@@ -334,7 +334,7 @@ function renderVoicePanel(
               : `MIDI ${voiceState.detectedMidi}${
                   voiceState.detectedFrequency === null
                     ? ""
-                    : ` • ${voiceState.detectedFrequency.toFixed(1)} Hz`
+                    : ` | ${voiceState.detectedFrequency.toFixed(1)} Hz`
                 }`
           }
         </p>
@@ -367,7 +367,7 @@ function renderVoicePanel(
                       : ""
                   }
                 >
-                  Add Detected Note
+                  Add Current Note
                 </button>
                 <button
                   id="voice-clear-notes-btn"
@@ -440,8 +440,9 @@ export function attachReplayHandler(
   container: HTMLElement,
   onReplay: ReplayFn
 ): void {
-  const button = container.querySelector<HTMLButtonElement>("#replay-btn");
-  button?.addEventListener("click", onReplay);
+  container
+    .querySelector<HTMLButtonElement>("#replay-btn")
+    ?.addEventListener("click", onReplay);
 }
 
 export function attachVoiceHandlers(
