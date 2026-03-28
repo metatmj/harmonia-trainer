@@ -86,14 +86,21 @@ export interface GeneratedQuestion {
 export type UserAnswer =
   | { type: "multiple-choice"; choiceIndex: number; choiceValue: NoteName }
   | { type: "note-button"; midi: number; note: NoteName }
-  | { type: "voice"; detectedMidi?: number; detectedNote?: NoteName; confidence: number };
+  | {
+      type: "voice";
+      detectedMidi?: number;
+      detectedNote?: NoteName;
+      detectedMidis?: number[];
+      detectedNotes?: NoteName[];
+      confidence: number;
+    };
 
 export interface AnswerEvaluation {
   isCorrect: boolean;
   /** False for replay-triggered or non-scoring interactions. */
   countedForScore: boolean;
   expected: NoteName[];
-  actual: NoteName | null;
+  actual: NoteName | NoteName[] | null;
   pitchJudgement?: PitchJudgement;
   feedbackCode: FeedbackCode;
   feedbackMessage: string;

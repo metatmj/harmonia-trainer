@@ -24,6 +24,8 @@ export interface SessionVoiceState {
   detectedNote: NoteName | null;
   detectedMidi: number | null;
   confidence: number;
+  capturedNotes: NoteName[];
+  capturedMidis: number[];
 }
 
 function formatTime(ms: number): string {
@@ -107,9 +109,11 @@ export function renderSessionView(
   const isEndless = session.config.questionCount === 0;
   const totalQuestions = questions.length;
   const question = questions[questionIndex];
-  const progress = !isEndless && totalQuestions > 0
-    ? Math.round((questionIndex / totalQuestions) * 100)
-    : 0;
+  const isPhraseQuestion = question.melody.length > 1;
+  const progress =
+    !isEndless && totalQuestions > 0
+      ? Math.round((questionIndex / totalQuestions) * 100)
+      : 0;
   const progressLabel = isEndless ? "Endless" : `${progress}%`;
   const totalLabel = isEndless ? "Infinity" : String(totalQuestions);
   const isVoice = session.config.inputType === "voice";
@@ -157,12 +161,16 @@ export function renderSessionView(
           }
           in <strong>${question.key}</strong> major
         </p>
-        <p class="text-lg text-gray-700 mb-1">Melody note:</p>
-        <div class="text-6xl font-bold text-indigo-600 my-4">${question.melody[0]}</div>
+        <p class="text-lg text-gray-700 mb-1">
+          ${isPhraseQuestion ? "Melody phrase:" : "Melody note:"}
+        </p>
+        <div class="text-6xl font-bold text-indigo-600 my-4">
+          ${isPhraseQuestion ? question.melody.join(" - ") : question.melody[0]}
+        </div>
         <p class="text-gray-500 text-sm">
           ${
-            question.melody.length > 1
-              ? `Phrase: ${question.melody.join(" - ")}`
+            isPhraseQuestion
+              ? "Sing and capture the harmony phrase in order."
               : "Sing or select the correct harmony note."
           }
         </p>
@@ -216,7 +224,12 @@ export function renderSessionView(
 
       ${
         isVoice
-          ? renderVoicePanel(voiceState, audioState.isPlaying)
+          ? renderVoicePanel(
+              voiceState,
+              audioState.isPlaying,
+              isPhraseQuestion,
+              question.expectedHarmony.length
+            )
           : renderChoices(question.choices ?? [], lastEvaluation)
       }
 
@@ -246,7 +259,11 @@ function renderChoices(
   if (choices.length === 0) return "";
 
   const wrongChoiceOnLastAttempt =
-    lastEvaluation && !lastEvaluation.isCorrect ? lastEvaluation.actual : null;
+    lastEvaluation &&
+    !lastEvaluation.isCorrect &&
+    typeof lastEvaluation.actual === "string"
+      ? lastEvaluation.actual
+      : null;
 
   const buttons = choices
     .map((note) => {
@@ -276,41 +293,25 @@ function renderChoices(
   `;
 }
 
-export function attachChoiceHandlers(
-  container: HTMLElement,
-  onSubmitAnswer: SubmitAnswerFn
-): void {
-  container.querySelectorAll<HTMLButtonElement>(".choice-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      const note = button.dataset["note"] as NoteName;
-      if (note) onSubmitAnswer(note);
-    });
-  });
-}
-
-export function attachReplayHandler(
-  container: HTMLElement,
-  onReplay: ReplayFn
-): void {
-  const button = container.querySelector<HTMLButtonElement>("#replay-btn");
-  if (!button) return;
-
-  button.addEventListener("click", onReplay);
-}
-
 function renderVoicePanel(
   voiceState: SessionVoiceState,
-  isPromptPlaying: boolean
+  isPromptPlaying: boolean,
+  isPhraseQuestion: boolean,
+  targetLength: number
 ): string {
   const statusText = voiceState.isListening
     ? voiceState.detectedNote
-      ? `Detected: ${voiceState.detectedNote} (${Math.round(voiceState.confidence * 100)}% confidence)`
+      ? `Detected: ${voiceState.detectedNote} (${Math.round(
+          voiceState.confidence * 100
+        )}% confidence)`
       : "Listening for a stable pitch..."
     : voiceState.isRequestingPermission
       ? "Requesting microphone permission..."
       : isPromptPlaying
         ? "Wait for the prompt to finish, then start listening."
-        : "Start listening, sing the harmony note, then submit the detected note.";
+        : isPhraseQuestion
+          ? "Capture the harmony line one note at a time, then submit the phrase."
+          : "Start listening, sing the harmony note, then submit the detected note.";
 
   return `
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
@@ -334,6 +335,46 @@ function renderVoicePanel(
         </p>
       </div>
 
+      ${
+        isPhraseQuestion
+          ? `<div class="rounded-2xl border border-gray-200 bg-white px-6 py-5 mb-5">
+              <div class="flex items-center justify-between gap-3 mb-3">
+                <p class="text-sm font-medium text-gray-700">Captured harmony phrase</p>
+                <p class="text-xs text-gray-500">${voiceState.capturedNotes.length}/${targetLength} notes</p>
+              </div>
+              <div class="min-h-12 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                ${
+                  voiceState.capturedNotes.length > 0
+                    ? voiceState.capturedNotes.join(" - ")
+                    : "No notes captured yet."
+                }
+              </div>
+              <div class="mt-3 flex flex-col sm:flex-row gap-3">
+                <button
+                  id="voice-add-note-btn"
+                  type="button"
+                  class="flex-1 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  ${
+                    voiceState.detectedNote === null || voiceState.isRequestingPermission
+                      ? "disabled"
+                      : ""
+                  }
+                >
+                  Add Detected Note
+                </button>
+                <button
+                  id="voice-clear-notes-btn"
+                  type="button"
+                  class="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  ${voiceState.capturedNotes.length === 0 ? "disabled" : ""}
+                >
+                  Clear Phrase
+                </button>
+              </div>
+            </div>`
+          : ""
+      }
+
       <div class="flex flex-col sm:flex-row gap-3">
         <button
           id="voice-toggle-btn"
@@ -354,12 +395,16 @@ function renderVoicePanel(
           type="button"
           class="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           ${
-            voiceState.detectedNote === null || voiceState.isRequestingPermission
+            (
+              isPhraseQuestion
+                ? voiceState.capturedNotes.length === 0
+                : voiceState.detectedNote === null
+            ) || voiceState.isRequestingPermission
               ? "disabled"
               : ""
           }
         >
-          Submit Detected Note
+          ${isPhraseQuestion ? "Submit Phrase" : "Submit Detected Note"}
         </button>
       </div>
 
@@ -372,16 +417,46 @@ function renderVoicePanel(
   `;
 }
 
+export function attachChoiceHandlers(
+  container: HTMLElement,
+  onSubmitAnswer: SubmitAnswerFn
+): void {
+  container.querySelectorAll<HTMLButtonElement>(".choice-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const note = button.dataset["note"] as NoteName;
+      if (note) onSubmitAnswer(note);
+    });
+  });
+}
+
+export function attachReplayHandler(
+  container: HTMLElement,
+  onReplay: ReplayFn
+): void {
+  const button = container.querySelector<HTMLButtonElement>("#replay-btn");
+  button?.addEventListener("click", onReplay);
+}
+
 export function attachVoiceHandlers(
   container: HTMLElement,
   onToggleListening: VoiceActionFn,
-  onSubmitVoiceAnswer: SubmitVoiceAnswerFn
+  onSubmitVoiceAnswer: SubmitVoiceAnswerFn,
+  onAddDetectedNote: VoiceActionFn,
+  onClearDetectedNotes: VoiceActionFn
 ): void {
-  const toggleButton =
-    container.querySelector<HTMLButtonElement>("#voice-toggle-btn");
-  toggleButton?.addEventListener("click", onToggleListening);
+  container
+    .querySelector<HTMLButtonElement>("#voice-toggle-btn")
+    ?.addEventListener("click", onToggleListening);
 
-  const submitButton =
-    container.querySelector<HTMLButtonElement>("#voice-submit-btn");
-  submitButton?.addEventListener("click", onSubmitVoiceAnswer);
+  container
+    .querySelector<HTMLButtonElement>("#voice-submit-btn")
+    ?.addEventListener("click", onSubmitVoiceAnswer);
+
+  container
+    .querySelector<HTMLButtonElement>("#voice-add-note-btn")
+    ?.addEventListener("click", onAddDetectedNote);
+
+  container
+    .querySelector<HTMLButtonElement>("#voice-clear-notes-btn")
+    ?.addEventListener("click", onClearDetectedNotes);
 }

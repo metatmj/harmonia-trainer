@@ -45,14 +45,50 @@ export function evaluateAnswer(
   // voice answer
   if (answer.type === "voice") {
     if (question.expectedHarmony.length > 1 || question.melody.length > 1) {
+      const detectedNotes = answer.detectedNotes ?? [];
+
+      if (detectedNotes.length === 0) {
+        return {
+          isCorrect: false,
+          countedForScore: isFirstAttempt,
+          expected,
+          actual: null,
+          pitchJudgement: "no-input",
+          feedbackCode: "no-input",
+          feedbackMessage: "No reliable phrase input detected. Try again.",
+        };
+      }
+
+      const matchesMelody =
+        detectedNotes.length === question.melody.length &&
+        detectedNotes.every((note, index) => note === question.melody[index]);
+      if (matchesMelody) {
+        return {
+          isCorrect: false,
+          countedForScore: isFirstAttempt,
+          expected,
+          actual: detectedNotes,
+          pitchJudgement: "same-as-melody",
+          feedbackCode: "same-as-melody",
+          feedbackMessage:
+            "That phrase matches the melody. Try singing the harmony line instead.",
+        };
+      }
+
+      const isCorrect =
+        detectedNotes.length === expected.length &&
+        detectedNotes.every((note, index) => note === expected[index]);
+
       return {
-        isCorrect: false,
+        isCorrect,
         countedForScore: isFirstAttempt,
         expected,
-        actual: null,
-        feedbackCode: "wrong",
-        feedbackMessage:
-          "Phrase harmony voice evaluation is not available yet. Try a single-note exercise instead.",
+        actual: detectedNotes,
+        pitchJudgement: isCorrect ? "correct" : "wrong",
+        feedbackCode: isCorrect ? "correct" : "wrong",
+        feedbackMessage: isCorrect
+          ? "Correct phrase!"
+          : "That phrase does not match the harmony line. Try again.",
       };
     }
 

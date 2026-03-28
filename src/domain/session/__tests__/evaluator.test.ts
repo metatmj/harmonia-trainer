@@ -12,7 +12,7 @@ const baseQuestion: GeneratedQuestion = {
   choices: ["E", "D", "F", "G"],
 };
 
-describe("evaluateAnswer – multiple-choice", () => {
+describe("evaluateAnswer - multiple-choice", () => {
   it("marks correct when choice matches expected harmony", () => {
     const result = evaluateAnswer(
       baseQuestion,
@@ -62,7 +62,7 @@ describe("evaluateAnswer – multiple-choice", () => {
   });
 });
 
-describe("evaluateAnswer – note-button", () => {
+describe("evaluateAnswer - note-button", () => {
   it("marks correct when note matches expected harmony", () => {
     const result = evaluateAnswer(
       baseQuestion,
@@ -83,7 +83,7 @@ describe("evaluateAnswer – note-button", () => {
   });
 });
 
-describe("evaluateAnswer – voice", () => {
+describe("evaluateAnswer - voice", () => {
   const singQuestion: GeneratedQuestion = {
     ...baseQuestion,
     exerciseType: "sing-third",
@@ -139,7 +139,7 @@ describe("evaluateAnswer – voice", () => {
     expect(result.feedbackCode).toBe("wrong");
   });
 
-  it("rejects phrase-harmony voice evaluation until phrase scoring exists", () => {
+  it("marks a matching phrase-harmony sequence as correct", () => {
     const phraseQuestion: GeneratedQuestion = {
       ...singQuestion,
       exerciseType: "phrase-harmony",
@@ -149,12 +149,48 @@ describe("evaluateAnswer – voice", () => {
 
     const result = evaluateAnswer(
       phraseQuestion,
-      { type: "voice", confidence: 0.9, detectedNote: "E" },
+      { type: "voice", confidence: 0.9, detectedNotes: ["E", "F", "G"] },
+      true
+    );
+
+    expect(result.isCorrect).toBe(true);
+    expect(result.actual).toEqual(["E", "F", "G"]);
+    expect(result.feedbackCode).toBe("correct");
+  });
+
+  it("returns same-as-melody when the captured phrase matches the melody", () => {
+    const phraseQuestion: GeneratedQuestion = {
+      ...singQuestion,
+      exerciseType: "phrase-harmony",
+      melody: ["C", "D", "E"],
+      expectedHarmony: ["E", "F", "G"],
+    };
+
+    const result = evaluateAnswer(
+      phraseQuestion,
+      { type: "voice", confidence: 0.9, detectedNotes: ["C", "D", "E"] },
       true
     );
 
     expect(result.isCorrect).toBe(false);
-    expect(result.actual).toBeNull();
-    expect(result.feedbackMessage).toContain("not available yet");
+    expect(result.feedbackCode).toBe("same-as-melody");
+  });
+
+  it("returns no-input when a phrase submission has no captured notes", () => {
+    const phraseQuestion: GeneratedQuestion = {
+      ...singQuestion,
+      exerciseType: "phrase-harmony",
+      melody: ["C", "D", "E"],
+      expectedHarmony: ["E", "F", "G"],
+    };
+
+    const result = evaluateAnswer(
+      phraseQuestion,
+      { type: "voice", confidence: 0.9, detectedNotes: [] },
+      true
+    );
+
+    expect(result.isCorrect).toBe(false);
+    expect(result.feedbackCode).toBe("no-input");
   });
 });

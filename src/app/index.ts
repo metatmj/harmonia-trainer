@@ -47,6 +47,8 @@ export function initApp(root: HTMLElement): void {
     detectedNote: null,
     detectedMidi: null,
     confidence: 0,
+    capturedNotes: [],
+    capturedMidis: [],
   };
   let lastAutoPlayedQuestionId: string | null = null;
   let lastVoiceQuestionId: string | null = null;
@@ -63,6 +65,8 @@ export function initApp(root: HTMLElement): void {
         detectedNote: null,
         detectedMidi: null,
         confidence: 0,
+        capturedNotes: [],
+        capturedMidis: [],
       };
       lastAutoPlayedQuestionId = null;
       lastVoiceQuestionId = null;
@@ -96,6 +100,8 @@ export function initApp(root: HTMLElement): void {
       detectedNote: null,
       detectedMidi: null,
       confidence: 0,
+      capturedNotes: [],
+      capturedMidis: [],
     };
 
     if (source === "auto") {
@@ -139,6 +145,8 @@ export function initApp(root: HTMLElement): void {
       detectedNote: null,
       detectedMidi: null,
       confidence: 0,
+      capturedNotes: [],
+      capturedMidis: [],
     };
     lastVoiceQuestionId = questionId;
   }
@@ -194,6 +202,9 @@ export function initApp(root: HTMLElement): void {
       ...sessionVoiceState,
       isListening: false,
       isRequestingPermission: false,
+      detectedNote: null,
+      detectedMidi: null,
+      confidence: 0,
     };
     render();
   }
@@ -227,6 +238,8 @@ export function initApp(root: HTMLElement): void {
             detectedNote: null,
             detectedMidi: null,
             confidence: 0,
+            capturedNotes: [],
+            capturedMidis: [],
           };
           lastAutoPlayedQuestionId = null;
           lastVoiceQuestionId = null;
@@ -251,6 +264,7 @@ export function initApp(root: HTMLElement): void {
 
       const currentQuestion = session.questions[session.currentQuestionIndex];
       resetVoiceStateForQuestion(currentQuestion.id);
+      const isPhraseQuestion = currentQuestion.melody.length > 1;
 
       const handleAnswer = (note: NoteName) => {
         const questionIndex = session.currentQuestionIndex;
@@ -283,14 +297,22 @@ export function initApp(root: HTMLElement): void {
         const detectedNote = sessionVoiceState.detectedNote;
         const detectedMidi = sessionVoiceState.detectedMidi;
         const confidence = sessionVoiceState.confidence;
+        const detectedNotes = sessionVoiceState.capturedNotes;
+        const detectedMidis = sessionVoiceState.capturedMidis;
 
-        if (detectedNote === null) return;
+        if (isPhraseQuestion) {
+          if (detectedNotes.length === 0) return;
+        } else if (detectedNote === null) {
+          return;
+        }
 
         stopVoiceListening();
         const { evaluation } = sessionEngine.submitAnswer(session.id, {
           type: "voice",
           detectedMidi: detectedMidi ?? undefined,
-          detectedNote,
+          detectedNote: detectedNote ?? undefined,
+          detectedMidis,
+          detectedNotes,
           confidence,
         });
         persistSessionState();
@@ -335,7 +357,29 @@ export function initApp(root: HTMLElement): void {
 
           void startVoiceListening(session.id);
         },
-        handleVoiceSubmit
+        handleVoiceSubmit,
+        () => {
+          if (sessionVoiceState.detectedNote === null) return;
+
+          sessionVoiceState = {
+            ...sessionVoiceState,
+            capturedNotes: [...sessionVoiceState.capturedNotes, sessionVoiceState.detectedNote],
+            capturedMidis:
+              sessionVoiceState.detectedMidi === null
+                ? sessionVoiceState.capturedMidis
+                : [...sessionVoiceState.capturedMidis, sessionVoiceState.detectedMidi],
+            errorMessage: null,
+          };
+          render();
+        },
+        () => {
+          sessionVoiceState = {
+            ...sessionVoiceState,
+            capturedNotes: [],
+            capturedMidis: [],
+          };
+          render();
+        }
       );
 
       if (
