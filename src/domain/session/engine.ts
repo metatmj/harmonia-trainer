@@ -9,6 +9,8 @@ import type {
 import { generateQuestions } from "./generator.js";
 import { evaluateAnswer } from "./evaluator.js";
 
+const ENDLESS_BATCH_SIZE = 10;
+
 /**
  * Generates a simple unique id without relying on Web Crypto API, which may
  * not be available in all test environments (e.g. older Node.js versions).
@@ -41,6 +43,8 @@ export class SessionEngine {
     exerciseType: ExerciseType,
     config: ExerciseConfig
   ): ExerciseSession {
+    this.abandonActiveSession();
+
     const id = makeSessionId();
     const questions = generateQuestions(exerciseType, config);
 
@@ -71,7 +75,11 @@ export class SessionEngine {
   /** Returns the currently active session, or null if there is none. */
   getActiveSession(): ExerciseSession | null {
     if (this.activeSessionId === null) return null;
-    return this.sessions.get(this.activeSessionId) ?? null;
+    const session = this.sessions.get(this.activeSessionId) ?? null;
+    if (!session || session.status !== "active") {
+      return null;
+    }
+    return session;
   }
 
   // ── POST /api/sessions/:sessionId/answer ──────────────────────────────────
@@ -110,9 +118,14 @@ export class SessionEngine {
       const isLastQuestion = qi === session.questions.length - 1;
       const isEndless = session.config.questionCount === 0;
 
-      if (isLastQuestion && !isEndless) {
-        // Auto-complete on exhausting a finite question set
-        this.buildSummaryInPlace(session);
+      if (isLastQuestion) {
+        if (isEndless) {
+          this.appendEndlessBatch(session);
+          session.currentQuestionIndex = qi + 1;
+        } else {
+          // Auto-complete on exhausting a finite question set
+          this.buildSummaryInPlace(session);
+        }
       } else {
         session.currentQuestionIndex = qi + 1;
       }
@@ -147,7 +160,35 @@ export class SessionEngine {
   private requireActiveSession(sessionId: string): ExerciseSession {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
+    if (sessionId !== this.activeSessionId || session.status !== "active") {
+      throw new Error(`Session ${sessionId} is not the active session`);
+    }
     return session;
+  }
+
+  private abandonActiveSession(): void {
+    if (this.activeSessionId === null) return;
+
+    const activeSession = this.sessions.get(this.activeSessionId);
+    if (!activeSession || activeSession.status !== "active") {
+      this.activeSessionId = null;
+      return;
+    }
+
+    activeSession.status = "abandoned";
+    activeSession.endedAt = new Date().toISOString();
+    this.activeSessionId = null;
+  }
+
+  private appendEndlessBatch(session: ExerciseSession): void {
+    const nextQuestions = generateQuestions(session.exerciseType, {
+      ...session.config,
+      questionCount: ENDLESS_BATCH_SIZE,
+    });
+
+    session.questions.push(...nextQuestions);
+    session.answers.push(...nextQuestions.map(() => []));
+    session.evaluations.push(...nextQuestions.map(() => []));
   }
 
   private buildSummaryInPlace(session: ExerciseSession): void {
@@ -209,6 +250,9 @@ export class SessionEngine {
     session.status = "completed";
     session.endedAt = endedAt;
     session.summary = summary;
+    if (this.activeSessionId === session.id) {
+      this.activeSessionId = null;
+    }
   }
 }
 

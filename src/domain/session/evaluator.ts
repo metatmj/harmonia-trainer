@@ -44,6 +44,18 @@ export function evaluateAnswer(
 
   // voice answer
   if (answer.type === "voice") {
+    if (question.expectedHarmony.length > 1 || question.melody.length > 1) {
+      return {
+        isCorrect: false,
+        countedForScore: isFirstAttempt,
+        expected,
+        actual: null,
+        feedbackCode: "wrong",
+        feedbackMessage:
+          "Phrase harmony voice evaluation is not available yet. Try a single-note exercise instead.",
+      };
+    }
+
     if (answer.confidence < 0.5 || answer.detectedNote === undefined) {
       return {
         isCorrect: false,

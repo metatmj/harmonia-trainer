@@ -54,8 +54,9 @@ describe("SessionEngine", () => {
     });
 
     it("replaces the previously active session (one active at a time)", () => {
-      engine.createSession("match-third", config);
+      const first = engine.createSession("match-third", config);
       const second = engine.createSession("match-third", config);
+      expect(engine.getSession(first.id)?.status).toBe("abandoned");
       expect(engine.getActiveSession()?.id).toBe(second.id);
     });
   });
@@ -81,6 +82,21 @@ describe("SessionEngine", () => {
     it("returns the most recently created session", () => {
       const session = engine.createSession("match-third", config);
       expect(engine.getActiveSession()?.id).toBe(session.id);
+    });
+
+    it("returns null after the active session is completed", () => {
+      const session = engine.createSession("match-third", {
+        ...config,
+        questionCount: 1,
+      });
+
+      engine.submitAnswer(session.id, {
+        type: "multiple-choice",
+        choiceIndex: 0,
+        choiceValue: session.questions[0].expectedHarmony[0],
+      });
+
+      expect(engine.getActiveSession()).toBeNull();
     });
   });
 
@@ -178,6 +194,51 @@ describe("SessionEngine", () => {
           choiceValue: "C",
         })
       ).toThrow();
+    });
+
+    it("throws when submitting to a replaced session", () => {
+      const first = engine.createSession("match-third", config);
+      engine.createSession("match-third", config);
+
+      expect(() =>
+        engine.submitAnswer(first.id, {
+          type: "multiple-choice",
+          choiceIndex: 0,
+          choiceValue: first.questions[0].expectedHarmony[0],
+        })
+      ).toThrow(/not the active session/);
+    });
+
+    it("extends endless sessions instead of running out of questions", () => {
+      const session = engine.createSession("match-third", {
+        ...config,
+        questionCount: 0,
+      });
+      const initialLength = session.questions.length;
+
+      for (let i = 0; i < initialLength; i++) {
+        const current = session.questions[session.currentQuestionIndex];
+        engine.submitAnswer(session.id, {
+          type: "multiple-choice",
+          choiceIndex: 0,
+          choiceValue: current.expectedHarmony[0],
+        });
+      }
+
+      expect(session.status).toBe("active");
+      expect(session.questions.length).toBeGreaterThan(initialLength);
+      expect(session.currentQuestionIndex).toBe(initialLength);
+
+      const next = session.questions[session.currentQuestionIndex];
+      expect(next).toBeDefined();
+
+      expect(() =>
+        engine.submitAnswer(session.id, {
+          type: "multiple-choice",
+          choiceIndex: 0,
+          choiceValue: next.expectedHarmony[0],
+        })
+      ).not.toThrow();
     });
   });
 

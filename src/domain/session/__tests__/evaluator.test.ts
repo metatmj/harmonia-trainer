@@ -138,4 +138,23 @@ describe("evaluateAnswer – voice", () => {
     expect(result.isCorrect).toBe(false);
     expect(result.feedbackCode).toBe("wrong");
   });
+
+  it("rejects phrase-harmony voice evaluation until phrase scoring exists", () => {
+    const phraseQuestion: GeneratedQuestion = {
+      ...singQuestion,
+      exerciseType: "phrase-harmony",
+      melody: ["C", "D", "E"],
+      expectedHarmony: ["E", "F", "G"],
+    };
+
+    const result = evaluateAnswer(
+      phraseQuestion,
+      { type: "voice", confidence: 0.9, detectedNote: "E" },
+      true
+    );
+
+    expect(result.isCorrect).toBe(false);
+    expect(result.actual).toBeNull();
+    expect(result.feedbackMessage).toContain("not available yet");
+  });
 });
