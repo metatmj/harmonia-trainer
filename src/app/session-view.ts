@@ -6,13 +6,24 @@ import type {
 import type { NoteName } from "../domain/theory/notes.js";
 
 type SubmitAnswerFn = (note: NoteName) => void;
+type SubmitVoiceAnswerFn = () => void;
 type FinishFn = () => void;
 type BackToCatalogFn = () => void;
 type ReplayFn = () => void;
+type VoiceActionFn = () => void;
 
 export interface SessionAudioState {
   errorMessage: string | null;
   isPlaying: boolean;
+}
+
+export interface SessionVoiceState {
+  isListening: boolean;
+  isRequestingPermission: boolean;
+  errorMessage: string | null;
+  detectedNote: NoteName | null;
+  detectedMidi: number | null;
+  confidence: number;
 }
 
 function formatTime(ms: number): string {
@@ -85,7 +96,8 @@ export function renderSessionView(
   onFinish: FinishFn,
   onBack: BackToCatalogFn,
   lastEvaluation: AnswerEvaluation | null,
-  audioState: SessionAudioState
+  audioState: SessionAudioState,
+  voiceState: SessionVoiceState
 ): HTMLElement {
   const container = document.createElement("div");
   container.className = "min-h-screen bg-gray-50";
@@ -204,11 +216,7 @@ export function renderSessionView(
 
       ${
         isVoice
-          ? `<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500">
-              <p class="text-4xl mb-3">Mic</p>
-              <p class="font-medium text-gray-700">Microphone input</p>
-              <p class="text-sm mt-1">Audio features are not yet available in this build.</p>
-            </div>`
+          ? renderVoicePanel(voiceState, audioState.isPlaying)
           : renderChoices(question.choices ?? [], lastEvaluation)
       }
 
@@ -288,4 +296,92 @@ export function attachReplayHandler(
   if (!button) return;
 
   button.addEventListener("click", onReplay);
+}
+
+function renderVoicePanel(
+  voiceState: SessionVoiceState,
+  isPromptPlaying: boolean
+): string {
+  const statusText = voiceState.isListening
+    ? voiceState.detectedNote
+      ? `Detected: ${voiceState.detectedNote} (${Math.round(voiceState.confidence * 100)}% confidence)`
+      : "Listening for a stable pitch..."
+    : voiceState.isRequestingPermission
+      ? "Requesting microphone permission..."
+      : isPromptPlaying
+        ? "Wait for the prompt to finish, then start listening."
+        : "Start listening, sing the harmony note, then submit the detected note.";
+
+  return `
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+      <div class="text-center mb-6">
+        <p class="text-4xl mb-3">Mic</p>
+        <p class="font-medium text-gray-700">Microphone input</p>
+        <p class="text-sm mt-1 text-gray-500">${statusText}</p>
+      </div>
+
+      <div class="rounded-2xl border border-gray-200 bg-gray-50 px-6 py-5 text-center mb-5">
+        <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Detected note</p>
+        <div class="text-4xl font-bold text-indigo-600">
+          ${voiceState.detectedNote ?? "--"}
+        </div>
+        <p class="mt-2 text-sm text-gray-500">
+          ${
+            voiceState.detectedMidi === null
+              ? "No stable pitch yet."
+              : `MIDI ${voiceState.detectedMidi}`
+          }
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button
+          id="voice-toggle-btn"
+          type="button"
+          class="flex-1 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+          ${voiceState.isRequestingPermission || isPromptPlaying ? "disabled" : ""}
+        >
+          ${
+            voiceState.isListening
+              ? "Stop Listening"
+              : voiceState.isRequestingPermission
+                ? "Starting..."
+                : "Start Listening"
+          }
+        </button>
+        <button
+          id="voice-submit-btn"
+          type="button"
+          class="flex-1 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          ${
+            voiceState.detectedNote === null || voiceState.isRequestingPermission
+              ? "disabled"
+              : ""
+          }
+        >
+          Submit Detected Note
+        </button>
+      </div>
+
+      ${
+        voiceState.errorMessage
+          ? `<p class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">${voiceState.errorMessage}</p>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+export function attachVoiceHandlers(
+  container: HTMLElement,
+  onToggleListening: VoiceActionFn,
+  onSubmitVoiceAnswer: SubmitVoiceAnswerFn
+): void {
+  const toggleButton =
+    container.querySelector<HTMLButtonElement>("#voice-toggle-btn");
+  toggleButton?.addEventListener("click", onToggleListening);
+
+  const submitButton =
+    container.querySelector<HTMLButtonElement>("#voice-submit-btn");
+  submitButton?.addEventListener("click", onSubmitVoiceAnswer);
 }
