@@ -102,6 +102,34 @@ describe("SessionEngine", () => {
 
   // ── submitAnswer ──────────────────────────────────────────────────────────
 
+  describe("state persistence", () => {
+    it("exports the active session state", () => {
+      const session = engine.createSession("match-third", config);
+      const snapshot = engine.exportState();
+
+      expect(snapshot.activeSessionId).toBe(session.id);
+      expect(snapshot.sessions).toHaveLength(1);
+      expect(snapshot.sessions[0]?.id).toBe(session.id);
+    });
+
+    it("hydrates sessions and active session from a snapshot", () => {
+      const sourceEngine = new SessionEngine();
+      const session = sourceEngine.createSession("match-third", config);
+      sourceEngine.submitAnswer(session.id, {
+        type: "multiple-choice",
+        choiceIndex: 0,
+        choiceValue: session.questions[0].expectedHarmony[0],
+      });
+
+      const restoredEngine = new SessionEngine();
+      restoredEngine.hydrate(sourceEngine.exportState());
+
+      const restored = restoredEngine.getSession(session.id);
+      expect(restored?.currentQuestionIndex).toBe(1);
+      expect(restoredEngine.getActiveSession()?.id).toBe(session.id);
+    });
+  });
+
   describe("submitAnswer", () => {
     it("returns an evaluation for the submitted answer", () => {
       const session = engine.createSession("match-third", config);

@@ -128,3 +128,8 @@ export interface ExerciseSession {
   endedAt?: string;
   summary?: SessionSummary;
 }
+
+export interface SessionEngineSnapshot {
+  sessions: ExerciseSession[];
+  activeSessionId: string | null;
+}

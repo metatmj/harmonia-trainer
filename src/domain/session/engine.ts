@@ -3,6 +3,7 @@ import type {
   ExerciseConfig,
   ExerciseSession,
   ExerciseType,
+  SessionEngineSnapshot,
   SessionSummary,
   UserAnswer,
 } from "../../types/index.js";
@@ -80,6 +81,22 @@ export class SessionEngine {
       return null;
     }
     return session;
+  }
+
+  exportState(): SessionEngineSnapshot {
+    return {
+      sessions: Array.from(this.sessions.values()).map((session) =>
+        structuredClone(session)
+      ),
+      activeSessionId: this.activeSessionId,
+    };
+  }
+
+  hydrate(state: SessionEngineSnapshot): void {
+    this.sessions = new Map(
+      state.sessions.map((session) => [session.id, structuredClone(session)])
+    );
+    this.activeSessionId = state.activeSessionId;
   }
 
   // ── POST /api/sessions/:sessionId/answer ──────────────────────────────────

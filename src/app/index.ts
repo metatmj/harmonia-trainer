@@ -2,6 +2,10 @@ import type { AnswerEvaluation, ExerciseConfig } from "../types/index.js";
 import type { NoteName } from "../domain/theory/notes.js";
 import { EXERCISE_CATALOG, getExerciseBySlug } from "../domain/exercises/catalog.js";
 import { sessionEngine } from "../domain/session/engine.js";
+import {
+  restoreSessionEngineSnapshot,
+  saveSessionEngineSnapshot,
+} from "../domain/session/persistence.js";
 import { promptAudioPlayer } from "../audio/prompt-player.js";
 import { microphonePitchDetector } from "../audio/pitch-detector.js";
 import { renderCatalogView } from "./catalog-view.js";
@@ -23,7 +27,15 @@ type AppState =
   | { screen: "summary"; sessionId: string };
 
 export function initApp(root: HTMLElement): void {
-  let state: AppState = { screen: "catalog" };
+  const restoredState = restoreSessionEngineSnapshot(sessionEngine);
+  let state: AppState =
+    restoredState?.activeSessionId
+      ? {
+          screen: "session",
+          sessionId: restoredState.activeSessionId,
+          lastEvaluation: null,
+        }
+      : { screen: "catalog" };
   let sessionAudioState: SessionAudioState = {
     errorMessage: null,
     isPlaying: false,
@@ -58,6 +70,10 @@ export function initApp(root: HTMLElement): void {
 
     state = next;
     render();
+  }
+
+  function persistSessionState(): void {
+    saveSessionEngineSnapshot(sessionEngine);
   }
 
   async function playQuestionPrompt(
@@ -215,6 +231,7 @@ export function initApp(root: HTMLElement): void {
           lastAutoPlayedQuestionId = null;
           lastVoiceQuestionId = null;
           const session = sessionEngine.createSession(exercise.type, config);
+          persistSessionState();
           navigate({ screen: "session", sessionId: session.id, lastEvaluation: null });
         },
         () => navigate({ screen: "catalog" })
@@ -248,6 +265,7 @@ export function initApp(root: HTMLElement): void {
           choiceIndex,
           choiceValue: note,
         });
+        persistSessionState();
 
         if (session.status === "completed") {
           navigate({ screen: "summary", sessionId: session.id });
@@ -275,6 +293,7 @@ export function initApp(root: HTMLElement): void {
           detectedNote,
           confidence,
         });
+        persistSessionState();
 
         if (session.status === "completed") {
           navigate({ screen: "summary", sessionId: session.id });
@@ -292,6 +311,7 @@ export function initApp(root: HTMLElement): void {
         session,
         () => {
           sessionEngine.finishSession(sessionId);
+          persistSessionState();
           navigate({ screen: "summary", sessionId });
         },
         () => navigate({ screen: "catalog" }),
