@@ -9,13 +9,11 @@ type SubmitAnswerFn = (note: NoteName) => void;
 type FinishFn = () => void;
 type BackToCatalogFn = () => void;
 
-// ── Summary screen ─────────────────────────────────────────────────────────
-
 function formatTime(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return minutes > 0 ? `${minutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
 }
 
 export function renderSummaryView(
@@ -35,7 +33,7 @@ export function renderSummaryView(
 
   container.innerHTML = `
     <div class="bg-white rounded-2xl shadow-md border border-gray-200 max-w-md w-full p-8">
-      <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Session Complete 🎉</h2>
+      <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Session Complete</h2>
 
       <div class="flex flex-col gap-4 mb-8">
         <div class="flex justify-between items-center py-2 border-b border-gray-100">
@@ -76,8 +74,6 @@ export function renderSummaryView(
   return container;
 }
 
-// ── Active session screen ──────────────────────────────────────────────────
-
 export function renderSessionView(
   session: ExerciseSession,
   onFinish: FinishFn,
@@ -88,11 +84,15 @@ export function renderSessionView(
   container.className = "min-h-screen bg-gray-50";
 
   const { currentQuestionIndex, questions, evaluations } = session;
-  const qi = currentQuestionIndex;
-  const total = questions.length;
-  const question = questions[qi];
-  const progress = total > 0 ? Math.round((qi / total) * 100) : 0;
-
+  const questionIndex = currentQuestionIndex;
+  const isEndless = session.config.questionCount === 0;
+  const totalQuestions = questions.length;
+  const question = questions[questionIndex];
+  const progress = !isEndless && totalQuestions > 0
+    ? Math.round((questionIndex / totalQuestions) * 100)
+    : 0;
+  const progressLabel = isEndless ? "Endless" : `${progress}%`;
+  const totalLabel = isEndless ? "Infinity" : String(totalQuestions);
   const isVoice = session.config.inputType === "voice";
 
   container.innerHTML = `
@@ -103,12 +103,12 @@ export function renderSessionView(
           class="text-sm text-gray-400 hover:text-gray-700 transition-colors"
           aria-label="Back to catalog"
         >
-          ← Catalog
+          <- Catalog
         </button>
         <div class="flex-1 mx-4">
           <div class="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Question ${qi + 1} of ${total > 0 ? total : "∞"}</span>
-            <span>${progress}%</span>
+            <span>Question ${questionIndex + 1} of ${totalLabel}</span>
+            <span>${progressLabel}</span>
           </div>
           <div class="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -127,8 +127,6 @@ export function renderSessionView(
     </header>
 
     <main class="max-w-2xl mx-auto px-6 py-10 flex flex-col gap-6">
-
-      <!-- Question card -->
       <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
         <p class="text-sm text-gray-500 uppercase tracking-wide mb-3">
           ${
@@ -143,13 +141,12 @@ export function renderSessionView(
         <p class="text-gray-500 text-sm">
           ${
             question.melody.length > 1
-              ? `Phrase: ${question.melody.join(" – ")}`
+              ? `Phrase: ${question.melody.join(" - ")}`
               : "Sing or select the correct harmony note."
           }
         </p>
       </div>
 
-      <!-- Feedback banner -->
       ${
         lastEvaluation
           ? `<div class="rounded-xl px-5 py-4 text-center font-medium ${
@@ -162,24 +159,21 @@ export function renderSessionView(
           : ""
       }
 
-      <!-- Answer area -->
       ${
         isVoice
           ? `<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500">
-              <p class="text-4xl mb-3">🎤</p>
+              <p class="text-4xl mb-3">Mic</p>
               <p class="font-medium text-gray-700">Microphone input</p>
               <p class="text-sm mt-1">Audio features are not yet available in this build.</p>
             </div>`
           : renderChoices(question.choices ?? [], lastEvaluation)
       }
 
-      <!-- Attempt counter for this question -->
       ${(() => {
-        const evals = evaluations[qi] ?? [];
-        if (evals.length === 0) return "";
-        return `<p class="text-xs text-gray-400 text-center">Attempts on this question: ${evals.length}</p>`;
+        const currentEvaluations = evaluations[questionIndex] ?? [];
+        if (currentEvaluations.length === 0) return "";
+        return `<p class="text-xs text-gray-400 text-center">Attempts on this question: ${currentEvaluations.length}</p>`;
       })()}
-
     </main>
   `;
 
@@ -206,14 +200,14 @@ function renderChoices(
   const buttons = choices
     .map((note) => {
       const wasWrong = note === wrongChoiceOnLastAttempt;
-      const base =
+      const baseClasses =
         "flex-1 min-w-[4.5rem] py-4 rounded-xl border-2 text-xl font-bold transition-all";
-      const colours = wasWrong
+      const colourClasses = wasWrong
         ? "border-red-300 bg-red-50 text-red-600 cursor-not-allowed opacity-60"
         : "border-gray-200 bg-white text-gray-900 hover:border-indigo-400 hover:bg-indigo-50 active:scale-95 cursor-pointer";
 
       return `<button
-        class="${base} ${colours} choice-btn"
+        class="${baseClasses} ${colourClasses} choice-btn"
         data-note="${note}"
         ${wasWrong ? "disabled" : ""}
         aria-label="Select note ${note}"
@@ -231,17 +225,13 @@ function renderChoices(
   `;
 }
 
-/**
- * Attaches click handlers to choice buttons inside the given container.
- * Must be called after the container is appended to the DOM.
- */
 export function attachChoiceHandlers(
   container: HTMLElement,
   onSubmitAnswer: SubmitAnswerFn
 ): void {
-  container.querySelectorAll<HTMLButtonElement>(".choice-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const note = btn.dataset["note"] as NoteName;
+  container.querySelectorAll<HTMLButtonElement>(".choice-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const note = button.dataset["note"] as NoteName;
       if (note) onSubmitAnswer(note);
     });
   });

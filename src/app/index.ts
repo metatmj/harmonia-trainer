@@ -37,7 +37,10 @@ export function initApp(root: HTMLElement): void {
 
     if (state.screen === "config") {
       const exercise = getExerciseBySlug(state.slug);
-      if (!exercise) return navigate({ screen: "catalog" });
+      if (!exercise) {
+        navigate({ screen: "catalog" });
+        return;
+      }
 
       const view = renderSessionConfigView(
         exercise,
@@ -56,28 +59,34 @@ export function initApp(root: HTMLElement): void {
       const session = sessionEngine.getSession(sessionId);
 
       if (!session || session.status === "completed") {
-        return navigate({ screen: "summary", sessionId });
+        navigate({ screen: "summary", sessionId });
+        return;
       }
 
       const handleAnswer = (note: NoteName) => {
-        const qi = session.currentQuestionIndex;
-        const question = session.questions[qi];
+        const questionIndex = session.currentQuestionIndex;
+        const question = session.questions[questionIndex];
+        const choiceIndex = question.choices?.indexOf(note) ?? -1;
+        if (choiceIndex < 0) {
+          throw new Error(`Selected note "${note}" not found in question choices`);
+        }
+
         const { evaluation } = sessionEngine.submitAnswer(session.id, {
           type: "multiple-choice",
-          choiceIndex: question.choices?.indexOf(note) ?? 0,
+          choiceIndex,
           choiceValue: note,
         });
 
         if (session.status === "completed") {
           navigate({ screen: "summary", sessionId: session.id });
-        } else {
-          // Clear feedback on advance, keep it on incorrect
-          navigate({
-            screen: "session",
-            sessionId: session.id,
-            lastEvaluation: evaluation.isCorrect ? null : evaluation,
-          });
+          return;
         }
+
+        navigate({
+          screen: "session",
+          sessionId: session.id,
+          lastEvaluation: evaluation.isCorrect ? null : evaluation,
+        });
       };
 
       const view = renderSessionView(
@@ -99,11 +108,13 @@ export function initApp(root: HTMLElement): void {
       const session = sessionEngine.getSession(state.sessionId);
       const summary = session?.summary;
 
-      if (!summary) return navigate({ screen: "catalog" });
+      if (!summary) {
+        navigate({ screen: "catalog" });
+        return;
+      }
 
       const view = renderSummaryView(summary, () => navigate({ screen: "catalog" }));
       root.appendChild(view);
-      return;
     }
   }
 

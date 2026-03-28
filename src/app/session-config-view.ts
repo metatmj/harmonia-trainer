@@ -2,7 +2,6 @@ import type { ExerciseConfig, ExerciseTemplate } from "../types/index.js";
 import type { NoteName } from "../domain/theory/notes.js";
 import { SUPPORTED_KEYS } from "../domain/theory/scales.js";
 
-// Re-export the type so the app module can use it without touching domain
 export type { ExerciseConfig };
 
 const DIRECTION_OPTIONS = [
@@ -29,7 +28,7 @@ function buildKeyCheckboxes(selectedKeys: readonly NoteName[]): string {
 function buildPresetOptions(exercise: ExerciseTemplate): string {
   if (exercise.presets.length === 0) return "";
   const options = exercise.presets
-    .map((p) => `<option value="${p.id}">${p.label}</option>`)
+    .map((preset) => `<option value="${preset.id}">${preset.label}</option>`)
     .join("");
   return `
     <div class="mb-6">
@@ -38,11 +37,20 @@ function buildPresetOptions(exercise: ExerciseTemplate): string {
         id="preset-select"
         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
-        <option value="">— Choose a preset —</option>
+        <option value="">-- Choose a preset --</option>
         ${options}
       </select>
     </div>
   `;
+}
+
+function parseIntegerOrFallback(
+  value: string | undefined,
+  fallback: number
+): number {
+  if (value === undefined) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
 }
 
 export function renderSessionConfigView(
@@ -58,7 +66,7 @@ export function renderSessionConfigView(
     <header class="bg-white border-b border-gray-200 shadow-sm">
       <div class="max-w-2xl mx-auto px-6 py-5 flex items-center gap-4">
         <button id="back-btn" class="text-gray-400 hover:text-gray-700 transition-colors text-lg" aria-label="Back to catalog">
-          ← Back
+          <- Back
         </button>
         <div>
           <h1 class="text-2xl font-bold text-indigo-600">${exercise.title}</h1>
@@ -69,34 +77,31 @@ export function renderSessionConfigView(
 
     <main class="max-w-2xl mx-auto px-6 py-10">
       <form id="config-form" novalidate>
-
         ${buildPresetOptions(exercise)}
 
-        <!-- Direction -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-2">Direction</label>
           <div class="flex flex-col gap-2">
-            ${DIRECTION_OPTIONS.filter((o) =>
-              exercise.supportedDirections.includes(o.value)
+            ${DIRECTION_OPTIONS.filter((option) =>
+              exercise.supportedDirections.includes(option.value)
             )
               .map(
-                (o) => `
+                (option) => `
               <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                 <input
                   type="radio"
                   name="direction"
-                  value="${o.value}"
+                  value="${option.value}"
                   class="accent-indigo-600"
-                  ${defaults.direction === o.value ? "checked" : ""}
+                  ${defaults.direction === option.value ? "checked" : ""}
                 />
-                ${o.label}
+                ${option.label}
               </label>`
               )
               .join("")}
           </div>
         </div>
 
-        <!-- Allowed Keys -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-2">Allowed Keys</label>
           <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 p-3 bg-white border border-gray-200 rounded-lg">
@@ -105,7 +110,6 @@ export function renderSessionConfigView(
           <p class="text-xs text-gray-400 mt-1">Select at least one key.</p>
         </div>
 
-        <!-- Question Count -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-1" for="question-count">
             Number of Questions <span class="text-gray-400">(0 = endless)</span>
@@ -124,7 +128,6 @@ export function renderSessionConfigView(
           exercise.type !== "match-third"
             ? ""
             : `
-        <!-- Choice Count (match-third only) -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-1" for="choice-count">
             Number of Choices
@@ -142,10 +145,9 @@ export function renderSessionConfigView(
         ${
           exercise.type === "phrase-harmony"
             ? `
-        <!-- Melody Length (phrase-harmony only) -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-1" for="melody-length">
-            Melody Length (3–5 notes)
+            Melody Length (3-5 notes)
           </label>
           <input
             type="number"
@@ -159,7 +161,6 @@ export function renderSessionConfigView(
             : ""
         }
 
-        <!-- Tempo -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-1" for="tempo">
             Tempo (BPM)
@@ -174,7 +175,6 @@ export function renderSessionConfigView(
           />
         </div>
 
-        <!-- Options -->
         <div class="mb-8 flex flex-col gap-3">
           <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input
@@ -211,26 +211,23 @@ export function renderSessionConfigView(
   const form = container.querySelector<HTMLFormElement>("#config-form")!;
   const errorEl = container.querySelector<HTMLElement>("#form-error")!;
 
-  // Back button
   container
     .querySelector<HTMLButtonElement>("#back-btn")!
     .addEventListener("click", onBack);
 
-  // Preset select – overwrite form values when a preset is chosen
   const presetSelect =
     container.querySelector<HTMLSelectElement>("#preset-select");
   if (presetSelect) {
     presetSelect.addEventListener("change", () => {
       const presetId = presetSelect.value;
-      const preset = exercise.presets.find((p) => p.id === presetId);
+      const preset = exercise.presets.find((item) => item.id === presetId);
       if (!preset) return;
       applyConfigToForm(container, preset.config);
     });
   }
 
-  // Form submit
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
     errorEl.classList.add("hidden");
     errorEl.textContent = "";
 
@@ -258,37 +255,32 @@ function readConfigFromForm(
 
   const checkedKeys = Array.from(
     container.querySelectorAll<HTMLInputElement>(".key-checkbox:checked")
-  ).map((el) => el.value as NoteName);
+  ).map((element) => element.value as NoteName);
 
   if (checkedKeys.length === 0) return null;
 
-  const questionCount =
-    parseInt(
-      container.querySelector<HTMLInputElement>("#question-count")?.value ??
-        String(exercise.defaultConfig.questionCount),
-      10
-    ) || 0;
+  const questionCount = Math.max(
+    0,
+    parseIntegerOrFallback(
+      container.querySelector<HTMLInputElement>("#question-count")?.value,
+      exercise.defaultConfig.questionCount
+    )
+  );
 
-  const choiceCount =
-    parseInt(
-      container.querySelector<HTMLSelectElement>("#choice-count")?.value ??
-        String(exercise.defaultConfig.choiceCount),
-      10
-    ) || exercise.defaultConfig.choiceCount;
+  const choiceCount = parseIntegerOrFallback(
+    container.querySelector<HTMLSelectElement>("#choice-count")?.value,
+    exercise.defaultConfig.choiceCount
+  );
 
-  const melodyLength =
-    parseInt(
-      container.querySelector<HTMLInputElement>("#melody-length")?.value ??
-        String(exercise.defaultConfig.melodyLength),
-      10
-    ) || exercise.defaultConfig.melodyLength;
+  const melodyLength = parseIntegerOrFallback(
+    container.querySelector<HTMLInputElement>("#melody-length")?.value,
+    exercise.defaultConfig.melodyLength
+  );
 
-  const tempoBpm =
-    parseInt(
-      container.querySelector<HTMLInputElement>("#tempo")?.value ??
-        String(exercise.defaultConfig.tempoBpm),
-      10
-    ) || exercise.defaultConfig.tempoBpm;
+  const tempoBpm = parseIntegerOrFallback(
+    container.querySelector<HTMLInputElement>("#tempo")?.value,
+    exercise.defaultConfig.tempoBpm
+  );
 
   const playTonicBeforeQuestion =
     container.querySelector<HTMLInputElement>("#play-tonic")?.checked ?? false;
@@ -315,36 +307,29 @@ function applyConfigToForm(
   container: HTMLElement,
   config: ExerciseConfig
 ): void {
-  // Direction
   const dirRadio = container.querySelector<HTMLInputElement>(
     `input[name="direction"][value="${config.direction}"]`
   );
   if (dirRadio) dirRadio.checked = true;
 
-  // Keys
   container
     .querySelectorAll<HTMLInputElement>(".key-checkbox")
-    .forEach((cb) => {
-      cb.checked = config.allowedKeys.includes(cb.value as NoteName);
+    .forEach((checkbox) => {
+      checkbox.checked = config.allowedKeys.includes(checkbox.value as NoteName);
     });
 
-  // Question count
-  const qc = container.querySelector<HTMLInputElement>("#question-count");
-  if (qc) qc.value = String(config.questionCount);
+  const questionCount = container.querySelector<HTMLInputElement>("#question-count");
+  if (questionCount) questionCount.value = String(config.questionCount);
 
-  // Choice count
-  const cc = container.querySelector<HTMLSelectElement>("#choice-count");
-  if (cc) cc.value = String(config.choiceCount);
+  const choiceCount = container.querySelector<HTMLSelectElement>("#choice-count");
+  if (choiceCount) choiceCount.value = String(config.choiceCount);
 
-  // Melody length
-  const ml = container.querySelector<HTMLInputElement>("#melody-length");
-  if (ml) ml.value = String(config.melodyLength);
+  const melodyLength = container.querySelector<HTMLInputElement>("#melody-length");
+  if (melodyLength) melodyLength.value = String(config.melodyLength);
 
-  // Tempo
   const tempo = container.querySelector<HTMLInputElement>("#tempo");
   if (tempo) tempo.value = String(config.tempoBpm);
 
-  // Checkboxes
   const playTonic = container.querySelector<HTMLInputElement>("#play-tonic");
   if (playTonic) playTonic.checked = config.playTonicBeforeQuestion;
 

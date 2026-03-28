@@ -18,16 +18,18 @@ function inputTypeBadge(inputType: string): string {
     inputType === "voice"
       ? "bg-purple-100 text-purple-700"
       : "bg-blue-100 text-blue-700";
+  const icon = inputType === "voice" ? "Mic" : "Note";
+
   return `<span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${colour}">
-    ${inputType === "voice" ? "🎤" : "🎵"} ${label}
+    ${icon} ${label}
   </span>`;
 }
 
 function directionBadges(directions: string[]): string {
   return directions
     .map(
-      (d) =>
-        `<span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">${DIRECTION_LABELS[d] ?? d}</span>`
+      (direction) =>
+        `<span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">${DIRECTION_LABELS[direction] ?? direction}</span>`
     )
     .join(" ");
 }
@@ -52,33 +54,29 @@ export function renderCatalogView(
       <div class="grid gap-5" id="exercise-grid">
         ${exercises
           .map(
-            (ex) => `
-          <div
-            class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col gap-3 hover:border-indigo-400 hover:shadow-md transition-all cursor-pointer"
-            data-slug="${ex.slug}"
-            role="button"
-            tabindex="0"
-            aria-label="Open ${ex.title}"
-          >
+            (exercise) => `
+          <article class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col gap-3 hover:border-indigo-400 hover:shadow-md transition-all">
             <div class="flex items-start justify-between gap-4">
-              <h3 class="text-lg font-semibold text-gray-900">${ex.title}</h3>
+              <h3 class="text-lg font-semibold text-gray-900">${exercise.title}</h3>
               <div class="flex flex-wrap gap-1 shrink-0">
-                ${ex.supportedInputTypes.map(inputTypeBadge).join("")}
+                ${exercise.supportedInputTypes.map(inputTypeBadge).join("")}
               </div>
             </div>
-            <p class="text-gray-600 text-sm leading-relaxed">${ex.description}</p>
+            <p class="text-gray-600 text-sm leading-relaxed">${exercise.description}</p>
             <div class="flex flex-wrap gap-1 mt-1">
-              ${directionBadges(ex.supportedDirections)}
+              ${directionBadges(exercise.supportedDirections)}
             </div>
             <div class="mt-auto pt-3">
               <button
-                class="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-                data-slug="${ex.slug}"
+                type="button"
+                class="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors text-left"
+                data-slug="${exercise.slug}"
+                aria-label="Configure and start ${exercise.title}"
               >
-                Configure &amp; Start →
+                Configure &amp; Start ->
               </button>
             </div>
-          </div>
+          </article>
         `
           )
           .join("")}
@@ -86,23 +84,11 @@ export function renderCatalogView(
     </main>
   `;
 
-  // Event delegation – handle clicks on cards or the inner button
-  container.addEventListener("click", (e) => {
-    const target = e.target as HTMLElement;
-    const card = target.closest<HTMLElement>("[data-slug]");
-    if (card?.dataset["slug"]) {
-      onSelectExercise(card.dataset["slug"]);
-    }
-  });
-
-  container.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      const target = e.target as HTMLElement;
-      const card = target.closest<HTMLElement>("[data-slug]");
-      if (card?.dataset["slug"]) {
-        e.preventDefault();
-        onSelectExercise(card.dataset["slug"]);
-      }
+  container.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const button = target.closest<HTMLButtonElement>("button[data-slug]");
+    if (button?.dataset["slug"]) {
+      onSelectExercise(button.dataset["slug"]);
     }
   });
 
