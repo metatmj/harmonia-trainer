@@ -137,6 +137,15 @@ export interface ExerciseSession {
   summary?: SessionSummary;
 }
 
+export interface CompletedSessionRecord {
+  sessionId: string;
+  exerciseType: ExerciseType;
+  config: Pick<ExerciseConfig, "direction" | "inputType" | "questionCount">;
+  startedAt: string;
+  endedAt: string;
+  summary: SessionSummary;
+}
+
 export interface SessionEngineSnapshot {
   sessions: ExerciseSession[];
   activeSessionId: string | null;

@@ -3,7 +3,9 @@ import type { NoteName } from "../domain/theory/notes.js";
 import { EXERCISE_CATALOG, getExerciseBySlug } from "../domain/exercises/catalog.js";
 import { sessionEngine } from "../domain/session/engine.js";
 import {
+  loadCompletedSessionHistory,
   restoreSessionEngineSnapshot,
+  saveCompletedSessionHistoryEntry,
   saveSessionEngineSnapshot,
 } from "../domain/session/persistence.js";
 import { promptAudioPlayer } from "../audio/prompt-player.js";
@@ -92,6 +94,12 @@ export function initApp(root: HTMLElement): void {
 
   function persistSessionState(): void {
     saveSessionEngineSnapshot(sessionEngine);
+  }
+
+  function persistCompletedSession(sessionId: string): void {
+    const session = sessionEngine.getSession(sessionId);
+    if (!session || session.status !== "completed") return;
+    saveCompletedSessionHistoryEntry(session);
   }
 
   async function playQuestionPrompt(
@@ -255,6 +263,7 @@ export function initApp(root: HTMLElement): void {
     if (state.screen === "catalog") {
       const view = renderCatalogView(
         EXERCISE_CATALOG,
+        loadCompletedSessionHistory(),
         (slug) => navigate({ screen: "config", slug }),
         () => navigate({ screen: "lesson" })
       );
@@ -337,6 +346,7 @@ export function initApp(root: HTMLElement): void {
         persistSessionState();
 
         if (session.status === "completed") {
+          persistCompletedSession(session.id);
           navigate({ screen: "summary", sessionId: session.id });
           return;
         }
@@ -375,6 +385,7 @@ export function initApp(root: HTMLElement): void {
         persistSessionState();
 
         if (session.status === "completed") {
+          persistCompletedSession(session.id);
           navigate({ screen: "summary", sessionId: session.id });
           return;
         }
@@ -391,6 +402,7 @@ export function initApp(root: HTMLElement): void {
         () => {
           sessionEngine.finishSession(sessionId);
           persistSessionState();
+          persistCompletedSession(sessionId);
           navigate({ screen: "summary", sessionId });
         },
         () => navigate({ screen: "catalog" }),
@@ -466,6 +478,8 @@ export function initApp(root: HTMLElement): void {
         navigate({ screen: "catalog" });
         return;
       }
+
+      persistCompletedSession(state.sessionId);
 
       const view = renderSummaryView(summary, () => navigate({ screen: "catalog" }));
       root.appendChild(view);
